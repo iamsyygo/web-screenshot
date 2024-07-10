@@ -1,8 +1,8 @@
-import { rgba2hex } from "..";
+import { rgba2hex } from '..'
 
 // 十进制转化为16进制
 export function toHex(n: number) {
-  return n.toString(16).padStart(2, '0');
+  return n.toString(16).padStart(2, '0')
 }
 
 /**
@@ -11,9 +11,9 @@ export function toHex(n: number) {
  * @returns
  */
 export const rgbaObjectToString = (rgba: Rgba) => {
-  const { r, g, b, a } = rgba;
-  return `rgba(${r},${g},${b},${a})`;
-};
+  const { r, g, b, a } = rgba
+  return `rgba(${r},${g},${b},${a})`
+}
 
 /**
  * 显示颜色信息，包括放大镜和颜色值
@@ -21,46 +21,46 @@ export const rgbaObjectToString = (rgba: Rgba) => {
  * @returns
  */
 export const renderColorInfo = (params: any) => {
-  const { containerDom, color, colors, point } = params;
-  let container = containerDom;
-  const pos = point;
+  const { containerDom, color, colors, point } = params
+  let container = containerDom
+  const pos = point
 
   // 放大镜像素点的大小
-  const n = 7;
+  const n = 7
 
-  const count = colors[0].length;
+  const count = colors[0].length
 
   // 放大镜整体的大小 = 像素点大小 * 列数 + 2
-  const size = count * (n + 0) + 2;
+  const size = count * (n + 0) + 2
   if (!container) {
-    const magnifier: any = document.createElement('div');
-    container = magnifier;
+    const magnifier: any = document.createElement('div')
+    container = magnifier
   }
-
 
   // 处理边缘问题
   if (pos.x + size + 25 > window.innerWidth) {
-    pos.x -= size + 25;
+    pos.x -= size + 25
   }
   if (pos.y + size + 40 > window.innerHeight) {
-    pos.y -= size + 40;
+    pos.y -= size + 40
   }
   container.style = `
       position: fixed;
-      left: ${pos.x + 5}px;
-      top: ${pos.y}px;
+      top: 0;
+      left: 0;
+      transform: translate(${pos.x + 5}px, ${pos.y}px);
       z-index: 10001;
       pointer-events: none;
-    `;
-  container.innerHTML = '';
-  const pipette = drawPipette(colors, n);
-  const colorBlock = drawColorBlock(color);
-  const padding: any = document.createElement('div');
-  padding.style = 'height: 3px;';
-  container.appendChild(pipette);
-  container.appendChild(padding);
-  container.appendChild(colorBlock);
-  return container;
+    `
+  container.innerHTML = ''
+  const pipette = drawPipette(colors, n)
+  const colorBlock = drawColorBlock(color)
+  const padding: any = document.createElement('div')
+  padding.style = 'height: 3px;'
+  container.appendChild(pipette)
+  container.appendChild(padding)
+  container.appendChild(colorBlock)
+  return container
 }
 
 /**
@@ -70,11 +70,11 @@ export const renderColorInfo = (params: any) => {
  * @returns
  */
 export function drawPipette(colors: IColors, size = 8) {
-  const scale = 2;
-  const canvasContainer: any = document.createElement('div');
-  const canvasContent: any = document.createElement('div');
-  const pipetteCanvas: any = drawPipetteCanvas(colors, size);
-  canvasContainer.style = `position: relative;`;
+  const scale = 2
+  const canvasContainer: any = document.createElement('div')
+  const canvasContent: any = document.createElement('div')
+  const pipetteCanvas: any = drawPipetteCanvas(colors, size)
+  canvasContainer.style = `position: relative;`
   canvasContent.style = `
       position: absolute;
       top: 0;
@@ -83,10 +83,10 @@ export function drawPipette(colors: IColors, size = 8) {
       height: ${pipetteCanvas.height / scale}px;
       border-radius: 50%;
       box-shadow: 0 0 10px 10px rgba(150,150,150,0.2) inset;
-    `;
-  canvasContainer.appendChild(pipetteCanvas);
-  canvasContainer.appendChild(canvasContent);
-  return canvasContainer;
+    `
+  canvasContainer.appendChild(pipetteCanvas)
+  canvasContainer.appendChild(canvasContent)
+  return canvasContainer
 }
 
 /**
@@ -95,14 +95,14 @@ export function drawPipette(colors: IColors, size = 8) {
  * @returns
  */
 export function drawColorBlock(color: string) {
-  const colorBlock: any = document.createElement('div');
+  const colorBlock: any = document.createElement('div')
   colorBlock.style = `
       display: flex;
       align-items: center;
       background-color: rgba(0,0,0,0.4);
       padding: 2px 4px;
       border-radius: 3px;
-    `;
+    `
   colorBlock.innerHTML = `
       <div style="
         width: 20px;
@@ -117,8 +117,8 @@ export function drawColorBlock(color: string) {
         color: #fff;
         margin-left: 4px;
       ">${color}</div>
-    `;
-  return colorBlock;
+    `
+  return colorBlock
 }
 
 /**
@@ -128,9 +128,9 @@ export function drawColorBlock(color: string) {
  * @returns
  */
 export function renderTooltip(content: string, tooltipVisible = true) {
-  const tooltip: any = document.createElement('div');
-  tooltip.id = 'color-pipette-tooltip-container';
-  tooltip.innerHTML = content;
+  const tooltip: any = document.createElement('div')
+  tooltip.id = 'color-pipette-tooltip-container'
+  tooltip.innerHTML = content
   tooltip.style = `
       position: fixed;
       left: 50%;
@@ -144,8 +144,8 @@ export function renderTooltip(content: string, tooltipVisible = true) {
       color: #fff;
       font-size: 20px;
       pointer-events: none;
-    `;
-  return tooltip;
+    `
+  return tooltip
 }
 
 /**
@@ -155,9 +155,9 @@ export function renderTooltip(content: string, tooltipVisible = true) {
  * @returns
  */
 export function drawPipetteCanvas(colors: IColors, size: number) {
-  const count = colors.length;
-  const diameter = size * count;
-  const radius = diameter / 2;
+  const count = colors.length
+  const diameter = size * count
+  const radius = diameter / 2
   const { canvas, ctx } = getCanvas({
     width: diameter,
     height: diameter,
@@ -165,43 +165,45 @@ export function drawPipetteCanvas(colors: IColors, size: number) {
     attrs: {
       style: `border-radius: 50%;`,
     },
-  });
+  })
   if (!ctx) {
-    return;
+    return
   }
   // 画像素点
-  colors.forEach((row, i) => row.forEach((color, j) => {
-    ctx.fillStyle = color;
-    ctx.fillRect(j * size, i * size, size, size);
-  }));
+  colors.forEach((row, i) =>
+    row.forEach((color, j) => {
+      ctx.fillStyle = color
+      ctx.fillRect(j * size, i * size, size, size)
+    }),
+  )
   // 画水平线
   for (let i = 0; i < count; i += 1) {
-    ctx.beginPath();
-    ctx.strokeStyle = '#eee';
-    ctx.lineWidth = 0.6;
-    ctx.moveTo(0, i * size);
-    ctx.lineTo(diameter, i * size);
-    ctx.stroke();
+    ctx.beginPath()
+    ctx.strokeStyle = '#eee'
+    ctx.lineWidth = 0.6
+    ctx.moveTo(0, i * size)
+    ctx.lineTo(diameter, i * size)
+    ctx.stroke()
   }
   // 画垂直线
   for (let j = 0; j < count; j += 1) {
-    ctx.beginPath();
-    ctx.strokeStyle = '#eee';
-    ctx.lineWidth = 0.6;
-    ctx.moveTo(j * size, 0);
-    ctx.lineTo(j * size, diameter);
-    ctx.stroke();
+    ctx.beginPath()
+    ctx.strokeStyle = '#eee'
+    ctx.lineWidth = 0.6
+    ctx.moveTo(j * size, 0)
+    ctx.lineTo(j * size, diameter)
+    ctx.stroke()
   }
   // 画圆形边框
-  ctx.beginPath();
-  ctx.strokeStyle = '#ddd';
-  ctx.arc(radius, radius, radius, 0, 2 * Math.PI);
-  ctx.stroke();
+  ctx.beginPath()
+  ctx.strokeStyle = '#ddd'
+  ctx.arc(radius, radius, radius, 0, 2 * Math.PI)
+  ctx.stroke()
   // 画中心像素点
-  ctx.strokeStyle = '#000';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(radius - size / 2, radius - size / 2, size, size);
-  return canvas;
+  ctx.strokeStyle = '#000'
+  ctx.lineWidth = 1
+  ctx.strokeRect(radius - size / 2, radius - size / 2, size, size)
+  return canvas
 }
 
 /**
@@ -210,17 +212,17 @@ export function drawPipetteCanvas(colors: IColors, size: number) {
  * @returns
  */
 export function getCanvas({ width = 0, height = 0, scale = 1, attrs = {} as Record<string, any> }) {
-  const canvas: any = document.createElement('canvas');
-  Object.keys(attrs).forEach((key) => {
-    const value = attrs[key];
-    canvas.setAttribute(key, value);
-  });
-  canvas.setAttribute('width', `${width * scale}`);
-  canvas.setAttribute('height', `${height * scale}`);
-  canvas.style = `${attrs.style || ''};width: ${width}px;height: ${height}px;`;
-  const ctx = canvas.getContext('2d');
-  ctx?.scale(scale, scale);
-  return { canvas, ctx };
+  const canvas: any = document.createElement('canvas')
+  Object.keys(attrs).forEach(key => {
+    const value = attrs[key]
+    canvas.setAttribute(key, value)
+  })
+  canvas.setAttribute('width', `${width * scale}`)
+  canvas.setAttribute('height', `${height * scale}`)
+  canvas.style = `${attrs.style || ''};width: ${width}px;height: ${height}px;`
+  const ctx = canvas.getContext('2d')
+  ctx?.scale(scale, scale)
+  return { canvas, ctx }
 }
 
 /**
@@ -231,25 +233,25 @@ export function getCanvas({ width = 0, height = 0, scale = 1, attrs = {} as Reco
  * @returns
  */
 const getImageColor = (data: any[], rect: Rect, scale: number = 1) => {
-  const colors: any[][] = [];
-  const { width, height } = rect;
+  const colors: any[][] = []
+  const { width, height } = rect
   for (let row = 0; row < height; row += 1) {
     if (!colors[row]) {
-      colors[row] = [];
+      colors[row] = []
     }
-    const startIndex = row * width * 4 * scale * scale;
+    const startIndex = row * width * 4 * scale * scale
     for (let column = 0; column < width; column += 1) {
-      const i = startIndex + column * 4 * scale;
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
-      const a = data[i + 3] / 255;
-      const color = rgba2hex(r, g, b, a );
-      colors[row][column] = color;
+      const i = startIndex + column * 4 * scale
+      const r = data[i]
+      const g = data[i + 1]
+      const b = data[i + 2]
+      const a = data[i + 3] / 255
+      const color = rgba2hex(r, g, b, a)
+      colors[row][column] = color
     }
   }
-  return colors;
-};
+  return colors
+}
 
 /**
  * 获取canvas某一区域的颜色值二位数组
@@ -259,33 +261,30 @@ const getImageColor = (data: any[], rect: Rect, scale: number = 1) => {
  * @returns
  */
 export const getCanvasRectColor = (ctx: any, rect: Rect, scale: number = 1) => {
-  const { x, y, width, height } = rect;
-  const image = ctx.getImageData(x * scale, y * scale, width * scale, height * scale);
-  const { data } = image;
-  const colors = getImageColor(data, rect, scale);
-  return colors;
+  const { x, y, width, height } = rect
+  const image = ctx.getImageData(x * scale, y * scale, width * scale, height * scale)
+  const { data } = image
+  const colors = getImageColor(data, rect, scale)
+  return colors
 }
 
 export interface Point {
-  x: number;
-  y: number;
+  x: number
+  y: number
 }
 
 export interface Rect {
-  x: number;
-  y: number;
-  width: number;
+  x: number
+  y: number
+  width: number
   height: number
 }
 
-export type IColors = string[][];
+export type IColors = string[][]
 
 export interface Rgba {
-  r: number;
-  g: number;
-  b: number;
-  a: number;
+  r: number
+  g: number
+  b: number
+  a: number
 }
-
-
-

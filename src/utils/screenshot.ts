@@ -1,7 +1,19 @@
+import ColorPipette from './color-pipette'
+import { Toolbar } from './toolbar'
+
+export interface ToolbarItem {
+  name: string
+  title: string
+  icon: string
+  event?: () => void
+}
+
 interface ScreenshotOptions {
   imageUrl: string
-  canvasId?: string
+  canvasId: string
+  toolbarItems: ToolbarItem[]
 }
+
 export class Screenshot {
   private canvas: HTMLCanvasElement
   private ctx: CanvasRenderingContext2D
@@ -27,7 +39,12 @@ export class Screenshot {
 
   private dashOffset: number = 0
   private reqAnimFrameFlag = 0
-  constructor(canvasId: string, imageUrl: string) {
+
+  pipette: ColorPipette
+
+  private tooltip: Toolbar
+  constructor(options: ScreenshotOptions) {
+    const { canvasId, imageUrl, toolbarItems } = options
     this.canvas = <HTMLCanvasElement>document.getElementById(canvasId)
     this.ctx = this.canvas.getContext('2d')!
     this.imageUrl = imageUrl
@@ -65,12 +82,21 @@ export class Screenshot {
     this.canvas.addEventListener('mousemove', this.onMouseMove.bind(this))
     this.canvas.addEventListener('mouseup', this.onMouseUp.bind(this))
     this.canvas.addEventListener('contextmenu', this.cancelSelect.bind(this))
+
+    this.pipette = new ColorPipette({
+      ctx: this.ctx,
+    })
+    this.pipette.start()
+
+    this.tooltip = new Toolbar({
+      items: toolbarItems,
+    })
   }
 
   onMouseDown(event: MouseEvent) {
     const { offsetX, offsetY } = event
     this.draggingPoint = this.getDraggingPoint(offsetX, offsetY)!
-
+    this.pipette.hide()
     // 如果点击的是拖动点
     if (this.draggingPoint) {
       this.dragging = true
@@ -93,13 +119,13 @@ export class Screenshot {
     this.dashOffset = 0
     cancelAnimationFrame(this.reqAnimFrameFlag)
     this.animate()
+    this.tooltip.hide()
   }
 
   // TODO: 优化, 重复的判断逻辑过多
   onMouseMove(event: MouseEvent) {
     const { offsetX, offsetY } = event
     const draggingPoint = this.getDraggingPoint(offsetX, offsetY)
-
     const updateCursor = (cursorStyle: string) => {
       this.canvas.style.cursor = cursorStyle
     }
@@ -113,6 +139,8 @@ export class Screenshot {
     } else if (this.isMoving && !this.dragging) {
       this.moveSelection(offsetX - this.offsetX, offsetY - this.offsetY)
       updateCursor('grabbing')
+      this.tooltip.hide()
+      this.draw()
     } else if (this.isInsideSelection(offsetX, offsetY) && !this.dragging) {
       updateCursor('grabbing')
     } else if (!this.dragging) {
@@ -120,10 +148,10 @@ export class Screenshot {
     }
 
     if (this.draggingPoint) {
+      this.tooltip.hide()
+      this.draw()
       this.moveDraggingPoint(offsetX, offsetY)
     }
-
-    this.draw()
   }
 
   onMouseUp(event: MouseEvent) {
@@ -133,6 +161,16 @@ export class Screenshot {
     this.canvas.style.cursor = 'crosshair'
     this.updatePoints()
     this.dragging = false
+
+    // 如果是右键触发的mouseup，不做任何处理
+    if (event.button === 2) {
+      return
+    }
+
+    this.tooltip.show({
+      end: { x: Math.max(this.endX, this.startX), y: Math.max(this.endY, this.startY) },
+      start: { x: Math.min(this.endX, this.startX), y: Math.min(this.endY, this.startY) },
+    })
   }
 
   /**
@@ -257,7 +295,7 @@ export class Screenshot {
 
     if (this.startX !== this.endX && this.startY !== this.endY) {
       this.ctx.setLineDash([5, 5])
-      this.ctx.strokeStyle = 'black'
+      this.ctx.strokeStyle = 'white'
       this.ctx.lineDashOffset = -this.dashOffset
       this.ctx.lineWidth = 0.5
       this.ctx.strokeRect(
@@ -323,20 +361,25 @@ export class Screenshot {
     const tempCtx: CanvasRenderingContext2D | null = tempCanvas.getContext('2d')
     tempCanvas.width = width
     tempCanvas.height = height
-    tempCtx?.drawImage(this.canvas, this.startX, this.startY, width, height, 0, 0, width, height)
+    tempCtx?.drawImage(this.image, this.startX, this.startY, width, height, 0, 0, width, height)
     const selectedImageUrl = tempCanvas.toDataURL('image/png')
     console.log(selectedImageUrl) // 可以在这里处理选取的图像数据
+    this.cancelSelect()
+    return selectedImageUrl
   }
 
   // 右键取消选择
-  cancelSelect(event: MouseEvent) {
-    event.preventDefault()
+  cancelSelect(event?: MouseEvent) {
+    event?.preventDefault()
     this.isSelecting = false
     this.startX = 0
     this.startY = 0
     this.endX = 0
     this.endY = 0
     this.draw()
+    this.pipette.show()
+    this.pipette.handleMove(event)
+    this.tooltip.hide()
   }
 
   /**
@@ -349,4 +392,3 @@ export class Screenshot {
     this.reqAnimFrameFlag = requestAnimationFrame(this.animate.bind(this))
   }
 }
-

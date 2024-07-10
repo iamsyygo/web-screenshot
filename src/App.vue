@@ -1,11 +1,46 @@
 <script setup lang="ts">
-import { Screenshot } from './utils/screenshot';
-import bd3aefcc4bb4c7cf8bd61f206b936525 from './assets/bd3aefcc4bb4c7cf8bd61f206b936525.jpg'
+import { Screenshot } from './utils/screenshot'
+import bd3aefcc4bb4c7cf8bd61f206b936525 from './assets/bd3aefcc4bb4c7cf8bd61f206b936525.png'
+import { base642Blob } from './utils'
+const toolbarItems = [
+  {
+    name: 'copy',
+    title: '复制',
+    icon: 'solar--copy-bold-duotone',
+    event: (e: MouseEvent) => {
+      const img = screenshot.extractSelectedImage()
+      // 复制图片至剪贴板
+      // base64 转 blob
+      const item = new ClipboardItem({ 'image/png': base642Blob(img) })
+      navigator.clipboard.write([item])
+    },
+  },
+  {
+    name: 'cancel',
+    title: '取消',
+    icon: 'solar--close-square-bold-duotone',
+    event: (e: MouseEvent) => {
+      screenshot.cancelSelect(e)
+    },
+  },
+  {
+    name: 'success',
+    title: '成功',
+    icon: 'solar--check-square-bold-duotone',
+    event: () => {
+      screenshot.extractSelectedImage()
+    },
+  },
+]
 
-
+let screenshot: Screenshot
 
 window.onload = () => {
-  new Screenshot('canvas', bd3aefcc4bb4c7cf8bd61f206b936525)
+  screenshot = new Screenshot({
+    canvasId: 'canvas',
+    imageUrl: bd3aefcc4bb4c7cf8bd61f206b936525 as string,
+    toolbarItems,
+  })
 }
 function ontake() {
   // screenshot.takeScreenshot()
