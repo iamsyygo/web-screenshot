@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import './utils/screenshot1'
-// import { Screenshot } from './utils/screenshot'
-// import bd3aefcc4bb4c7cf8bd61f206b936525 from './assets/bd3aefcc4bb4c7cf8bd61f206b936525.jpg'
+import { Screenshot } from './utils/screenshot';
+import bd3aefcc4bb4c7cf8bd61f206b936525 from './assets/bd3aefcc4bb4c7cf8bd61f206b936525.jpg'
 
-// const screenshot = new Screenshot({
-//   image: bd3aefcc4bb4c7cf8bd61f206b936525,
-// })
 
+
+window.onload = () => {
+  new Screenshot('canvas', bd3aefcc4bb4c7cf8bd61f206b936525)
+}
 function ontake() {
   // screenshot.takeScreenshot()
 }

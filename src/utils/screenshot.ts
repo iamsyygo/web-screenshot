@@ -1,125 +1,352 @@
 interface ScreenshotOptions {
-  image: string
+  imageUrl: string
+  canvasId?: string
 }
-
 export class Screenshot {
   private canvas: HTMLCanvasElement
   private ctx: CanvasRenderingContext2D
-  private modal: HTMLDivElement
-  private options: ScreenshotOptions
+  private imageUrl: string
 
-  private screenWidth: number
-  private screenHeight: number
+  // 是否正在选择区域
+  private isSelecting: boolean
+  private startX: number
+  private startY: number
+  private endX: number
+  private endY: number
+  private image: HTMLImageElement
+  private points: { x: number; y: number }[]
+  private draggingPoint: { x: number; y: number } | null
 
-  private start: { x: number; y: number } = { x: 0, y: 0 }
-  private end: { x: number; y: number } = { x: 0, y: 0 }
+  // 正在拖动大小...
+  private dragging: boolean
 
-  constructor(options: ScreenshotOptions) {
-    // full screen size
-    const { width, height } = window.screen
-    this.screenWidth = width * window.devicePixelRatio
-    this.screenHeight = height * window.devicePixelRatio
+  // 正在移动选区...
+  private isMoving: boolean
+  private offsetX: number
+  private offsetY: number
 
-    this.options = options
-    this.canvas = document.createElement('canvas')
+  private dashOffset: number = 0
+  private reqAnimFrameFlag = 0
+  constructor(canvasId: string, imageUrl: string) {
+    this.canvas = <HTMLCanvasElement>document.getElementById(canvasId)
     this.ctx = this.canvas.getContext('2d')!
-    this.modal = document.createElement('div')
-    this.setupModal()
+    this.imageUrl = imageUrl
+
+    this.dragging = false
+    this.isSelecting = false
+    this.isMoving = false
+    this.offsetX = 0
+    this.offsetY = 0
+    this.startX = 0
+    this.startY = 0
+    this.endX = 0
+    this.endY = 0
+    this.draggingPoint = null
+    this.points = [
+      { x: 0, y: 0 },
+      { x: 0, y: 0 },
+      { x: 0, y: 0 },
+      { x: 0, y: 0 },
+      { x: 0, y: 0 },
+      { x: 0, y: 0 },
+      { x: 0, y: 0 },
+      { x: 0, y: 0 },
+    ]
+
+    this.image = new Image()
+    this.image.onload = () => {
+      this.canvas.width = this.image.width
+      this.canvas.height = this.image.height
+      this.ctx.drawImage(this.image, 0, 0)
+    }
+    this.image.src = this.imageUrl
+
+    this.canvas.addEventListener('mousedown', this.onMouseDown.bind(this))
+    this.canvas.addEventListener('mousemove', this.onMouseMove.bind(this))
+    this.canvas.addEventListener('mouseup', this.onMouseUp.bind(this))
+    this.canvas.addEventListener('contextmenu', this.cancelSelect.bind(this))
   }
 
-  private setupModal() {
-    this.modal.style.width = this.screenWidth + 'px'
-    this.modal.style.height = this.screenHeight + 'px'
-    this.modal.style.position = 'fixed'
-    this.modal.style.top = '0'
-    this.modal.style.left = '0'
-    this.modal.style.backgroundColor = 'rgba(0, 0, 0, 0.3)'
-    this.modal.style.opacity = '0'
-    this.modal.style.transition = 'opacity 0.3s'
-    this.modal.style.display = 'none'
+  onMouseDown(event: MouseEvent) {
+    const { offsetX, offsetY } = event
+    this.draggingPoint = this.getDraggingPoint(offsetX, offsetY)!
 
-    this.modal.addEventListener('click', this.startSelecting.bind(this))
-
-    document.body.appendChild(this.modal)
+    // 如果点击的是拖动点
+    if (this.draggingPoint) {
+      this.dragging = true
+      this.isSelecting = false
+    } else if (this.isInsideSelection(offsetX, offsetY)) {
+      // 点击的是选区or边框
+      this.isMoving = true
+      this.offsetX = offsetX - this.startX
+      this.offsetY = offsetY - this.startY
+      this.canvas.style.cursor = 'grabbing'
+    } else {
+      // 点击的是画布
+      this.isSelecting = true
+      this.startX = offsetX
+      this.startY = offsetY
+      this.endX = offsetX
+      this.endY = offsetY
+      this.canvas.style.cursor = 'crosshair'
+    }
+    this.dashOffset = 0
+    cancelAnimationFrame(this.reqAnimFrameFlag)
+    this.animate()
   }
 
-  public async takeScreenshot() {
-    const img = new Image()
-    img.src = this.options.image
-    img.onload = () => {
-      const width = this.screenWidth || img.width
-      const height = this.screenHeight || img.height
+  // TODO: 优化, 重复的判断逻辑过多
+  onMouseMove(event: MouseEvent) {
+    const { offsetX, offsetY } = event
+    const draggingPoint = this.getDraggingPoint(offsetX, offsetY)
 
-      this.canvas.width = width
-      this.canvas.height = height
-      // this.ctx.drawImage(img, 0, 0, width, height)
-
-      this.showScreenshot()
+    const updateCursor = (cursorStyle: string) => {
+      this.canvas.style.cursor = cursorStyle
     }
 
-    img.onerror = error => {
-      console.error('图片加载失败:', error)
+    if (draggingPoint && !this.dragging) {
+      this.setCursorForPoint(draggingPoint)
+    } else if (this.isSelecting) {
+      this.endX = offsetX
+      this.endY = offsetY
+      updateCursor('crosshair')
+    } else if (this.isMoving && !this.dragging) {
+      this.moveSelection(offsetX - this.offsetX, offsetY - this.offsetY)
+      updateCursor('grabbing')
+    } else if (this.isInsideSelection(offsetX, offsetY) && !this.dragging) {
+      updateCursor('grabbing')
+    } else if (!this.dragging) {
+      updateCursor('crosshair')
+    }
+
+    if (this.draggingPoint) {
+      this.moveDraggingPoint(offsetX, offsetY)
+    }
+
+    this.draw()
+  }
+
+  onMouseUp(event: MouseEvent) {
+    this.isSelecting = false
+    this.isMoving = false
+    this.draggingPoint = null
+    this.canvas.style.cursor = 'crosshair'
+    this.updatePoints()
+    this.dragging = false
+  }
+
+  /**
+   * 判断是否在选区内
+   * @param x
+   * @param y
+   * @returns
+   */
+  isInsideSelection(x: number, y: number) {
+    return x > this.startX && x < this.endX && y > this.startY && y < this.endY
+  }
+
+  /**
+   * 移动选区
+   * @param x
+   * @param y
+   */
+  moveSelection(x: number, y: number) {
+    const width = this.endX - this.startX
+    const height = this.endY - this.startY
+    this.startX = x
+    this.startY = y
+    this.endX = x + width
+    this.endY = y + height
+  }
+
+  /**
+   * 获取拖动点
+   * @param x
+   * @param y
+   * @returns
+   */
+  getDraggingPoint(x: number, y: number) {
+    return this.points.find(point => Math.abs(point.x - x) < 5 && Math.abs(point.y - y) < 5) || null
+  }
+
+  /**
+   * 移动拖动点
+   * @param x
+   * @param y
+   * @returns
+   */
+  moveDraggingPoint(x: number, y: number) {
+    if (!this.draggingPoint) return
+    const index = this.points.indexOf(this.draggingPoint)
+    if (index === -1) return
+
+    this.points[index].x = x
+    this.points[index].y = y
+
+    switch (index) {
+      case 0:
+        this.startX = x
+        this.startY = y
+        break
+      case 1:
+        this.endX = x
+        this.startY = y
+        break
+      case 2:
+        this.endX = x
+        this.endY = y
+        break
+      case 3:
+        this.startX = x
+        this.endY = y
+        break
+      case 4:
+        this.startX = x
+        break
+      case 5:
+        this.endX = x
+        break
+      case 6:
+        this.startY = y
+        break
+      case 7:
+        this.endY = y
+        break
     }
   }
 
-  private showScreenshot() {
-    const screenshotImg = new Image()
-    screenshotImg.src = this.canvas.toDataURL()
-    this.modal.appendChild(screenshotImg)
-    this.modal.style.display = 'block'
-    this.modal.style.opacity = '1'
+  /**
+   * 设置鼠标样式
+   * @param point 鼠标位置
+   */
+  setCursorForPoint(point: { x: number; y: number }) {
+    const index = this.points.indexOf(point)
+    switch (index) {
+      case 0:
+      case 2:
+        // 左上角 or 右下角
+        this.canvas.style.cursor = 'nwse-resize'
+        break
+
+      case 1:
+      case 3:
+        // 右上角 or 左下角
+        this.canvas.style.cursor = 'nesw-resize'
+        break
+
+      case 4:
+      case 5:
+        // 左中 or 右中
+        this.canvas.style.cursor = 'col-resize'
+        break
+
+      case 6:
+      case 7:
+        // 上中 or 下中
+        this.canvas.style.cursor = 'row-resize'
+        break
+
+      default:
+        this.canvas.style.cursor = 'default'
+    }
   }
 
-  public hideScreenshot() {
-    this.modal.style.display = 'none'
-    this.modal.style.opacity = '0'
-  }
-
-  public startSelecting() {
-    this.modal.style.cursor = 'crosshair'
-    this.modal.addEventListener('mousedown', this.handleMouseDown)
-    this.modal.addEventListener('mousemove', this.handleMouseMove)
-    this.modal.addEventListener('mouseup', this.handleMouseUp)
-  }
-  handleMouseDown = (e: MouseEvent) => {
-    console.log(e)
-
-    this.start.x = e.clientX
-    this.start.y = e.clientY
-  }
-  handleMouseMove = (e: MouseEvent) => {
-    this.end.x = e.clientX
-    this.end.y = e.clientY
-    this.drawSelectRect()
-  }
-  handleMouseUp = (e: MouseEvent) => {
-    this.end.x = e.clientX
-    this.end.y = e.clientY
-    this.drawSelectRect()
-    // this.cropScreenshot()
-  }
-  drawSelectRect() {
-    const { x, y } = this.start
-    const width = this.end.x - x
-    const height = this.end.y - y
+  draw() {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
-    this.ctx.drawImage(this.modal.querySelector('img')!, 0, 0)
-    this.ctx.strokeStyle = 'red'
-    this.ctx.lineWidth = 2
-    this.ctx.strokeRect(x, y, width, height)
+    this.ctx.drawImage(this.image, 0, 0)
+
+    if (this.startX !== this.endX && this.startY !== this.endY) {
+      this.ctx.setLineDash([5, 5])
+      this.ctx.strokeStyle = 'black'
+      this.ctx.lineDashOffset = -this.dashOffset
+      this.ctx.lineWidth = 0.5
+      this.ctx.strokeRect(
+        this.startX,
+        this.startY,
+        this.endX - this.startX,
+        this.endY - this.startY,
+      )
+      this.drawPoints()
+    }
   }
-  cropScreenshot() {
-    const { x, y } = this.start
-    const width = this.end.x - x
-    const height = this.end.y - y
-    const imageData = this.ctx.getImageData(x, y, width, height)
-    this.canvas.width = width
-    this.canvas.height = height
-    this.ctx.putImageData(imageData, 0, 0)
-    this.hideScreenshot()
-    this.modal.style.cursor = 'default'
-    this.modal.removeEventListener('mousedown', this.handleMouseDown)
-    this.modal.removeEventListener('mousemove', this.handleMouseMove)
-    this.modal.removeEventListener('mouseup', this.handleMouseUp)
+
+  drawPoints() {
+    this.updatePoints()
+    this.ctx.fillStyle = 'white'
+    this.ctx.strokeStyle = 'black'
+    this.points.forEach(point => {
+      this.ctx.beginPath()
+      this.ctx.arc(point.x, point.y, 5, 0, 2 * Math.PI)
+      this.ctx.fill()
+    })
+  }
+
+  updatePoints() {
+    // fix change quote generate error
+    // top left
+    this.points[0].x = this.startX
+    this.points[0].y = this.startY
+
+    // top right
+    this.points[1].x = this.endX
+    this.points[1].y = this.startY
+
+    // bottom right
+    this.points[2].x = this.endX
+    this.points[2].y = this.endY
+
+    // bottom left
+    this.points[3].x = this.startX
+    this.points[3].y = this.endY
+
+    // middle left
+    this.points[4].x = this.startX
+    this.points[4].y = (this.startY + this.endY) / 2
+
+    // middle right
+    this.points[5].x = this.endX
+    this.points[5].y = (this.startY + this.endY) / 2
+
+    // middle top
+    this.points[6].x = (this.startX + this.endX) / 2
+    this.points[6].y = this.startY
+
+    // middle bottom
+    this.points[7].x = (this.startX + this.endX) / 2
+    this.points[7].y = this.endY
+  }
+
+  extractSelectedImage() {
+    const width = this.endX - this.startX
+    const height = this.endY - this.startY
+    const tempCanvas = <HTMLCanvasElement>document.createElement('canvas')
+    const tempCtx: CanvasRenderingContext2D | null = tempCanvas.getContext('2d')
+    tempCanvas.width = width
+    tempCanvas.height = height
+    tempCtx?.drawImage(this.canvas, this.startX, this.startY, width, height, 0, 0, width, height)
+    const selectedImageUrl = tempCanvas.toDataURL('image/png')
+    console.log(selectedImageUrl) // 可以在这里处理选取的图像数据
+  }
+
+  // 右键取消选择
+  cancelSelect(event: MouseEvent) {
+    event.preventDefault()
+    this.isSelecting = false
+    this.startX = 0
+    this.startY = 0
+    this.endX = 0
+    this.endY = 0
+    this.draw()
+  }
+
+  /**
+   * 绘制流动的线
+   */
+  animate() {
+    this.dashOffset += 0.5 // 改变这个值可以改变流动的速度
+    this.draw()
+    // requestAnimationFrame(this.animate.bind(this))
+    this.reqAnimFrameFlag = requestAnimationFrame(this.animate.bind(this))
   }
 }
+
