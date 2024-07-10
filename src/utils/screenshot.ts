@@ -125,6 +125,12 @@ export class Screenshot {
   // TODO: 优化, 重复的判断逻辑过多
   onMouseMove(event: MouseEvent) {
     const { offsetX, offsetY } = event
+
+    // 上下左右边缘超出画布，不做任何处理
+    // if (offsetX < 0 || offsetX > this.canvas.width || offsetY < 0 || offsetY > this.canvas.height) {
+    //   return
+    // }
+
     const draggingPoint = this.getDraggingPoint(offsetX, offsetY)
     const updateCursor = (cursorStyle: string) => {
       this.canvas.style.cursor = cursorStyle
@@ -295,7 +301,7 @@ export class Screenshot {
 
     if (this.startX !== this.endX && this.startY !== this.endY) {
       this.ctx.setLineDash([5, 5])
-      this.ctx.strokeStyle = 'white'
+      this.ctx.strokeStyle = 'black'
       this.ctx.lineDashOffset = -this.dashOffset
       this.ctx.lineWidth = 0.5
       this.ctx.strokeRect(
@@ -354,7 +360,7 @@ export class Screenshot {
     this.points[7].y = this.endY
   }
 
-  extractSelectedImage() {
+  extractSelectedImage(e?: any) {
     const width = this.endX - this.startX
     const height = this.endY - this.startY
     const tempCanvas = <HTMLCanvasElement>document.createElement('canvas')
@@ -364,7 +370,7 @@ export class Screenshot {
     tempCtx?.drawImage(this.image, this.startX, this.startY, width, height, 0, 0, width, height)
     const selectedImageUrl = tempCanvas.toDataURL('image/png')
     console.log(selectedImageUrl) // 可以在这里处理选取的图像数据
-    this.cancelSelect()
+    this.cancelSelect(e)
     return selectedImageUrl
   }
 

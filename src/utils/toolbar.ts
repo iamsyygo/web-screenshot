@@ -7,13 +7,6 @@
  */
 import { ToolbarItem } from './screenshot'
 import './toolbar-icon.css'
-interface Rect {
-  x: number
-  y: number
-  width: number
-  height: number
-}
-
 const wrapperDefaultStyle = `
         position: fixed;
         left: 0;
@@ -33,8 +26,6 @@ const wrapperDefaultStyle = `
 interface ShowOptions {
   end: { x: number; y: number }
   start: { x: number; y: number }
-  //   width: number
-  //   height: number
 }
 
 interface ToolbarOptions {

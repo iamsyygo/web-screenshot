@@ -23,9 +23,9 @@ class ColorPipette {
   }
   async start() {
     try {
-      const tooltip = renderTooltip('按 Esc 可退出')
-      document.body.appendChild(tooltip)
-      setTimeout(() => tooltip?.parentNode?.removeChild(tooltip), 3000)
+      // const tooltip = renderTooltip('按 Esc 可退出')
+      // document.body.appendChild(tooltip)
+      // setTimeout(() => tooltip?.parentNode?.removeChild(tooltip), 3000)
       this.canvas.addEventListener('mousemove', this.handleMove)
       // this.canvas.addEventListener('mousedown', this.handleDown)
       document.addEventListener('keydown', this.handleKeyDown)
